@@ -2,7 +2,7 @@ import boto3
 
 
 def get_client(service_name: str, client: boto3.client = None, credentials: dict = None) -> boto3.client:
-    """ Retrieves a boto3 client for the given service
+    """Retrieves a boto3 client for the given service
 
     :param service_name: the name of the service to retrieve a client for
     :param client: an optional instantiated client to inject

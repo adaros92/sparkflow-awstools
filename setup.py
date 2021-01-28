@@ -17,7 +17,7 @@ setup(
     url="https://github.com/adaros92/sparkflow-awstools",
     version='0.1.0',
     install_requires=['boto3', 'tenacity'],
-    tests_require=['pytest', 'pytest-cov', 'tox', 'Random-Word'],
+    tests_require=['pytest', 'pytest-cov', 'tox', 'Random-Word', 'tenacity'],
     license="MIT",
     classifiers=[
             "License :: OSI Approved :: MIT License",

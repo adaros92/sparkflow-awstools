@@ -7,6 +7,12 @@ from sparkflowtools.utils import aws, config
 
 
 def get_emr_client(client: boto3.client = None, credentials: dict = None) -> boto3.client:
+    """Retrieves an EMR boto3 client as either the one provided or a new instantiated one
+
+    :param client: an optional boto3 client to use for the request
+    :param credentials: an optional dictionary of credentials to assume
+    :return: a new boto3 EMR client or the given one if one is provided
+    """
     return aws.get_client('emr', client=client, credentials=credentials)
 
 
@@ -18,7 +24,7 @@ def get_emr_client(client: boto3.client = None, credentials: dict = None) -> bot
     stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
 )
 def get_step_status(cluster_id: str, step_id: str, client: boto3.client = None) -> dict:
-    """ Retrieves the status of a job step on EMR
+    """Retrieves the status of a job step on EMR
 
     If a client is not provided it will just assume a default EMR client with the current session's
     credentials
@@ -27,7 +33,7 @@ def get_step_status(cluster_id: str, step_id: str, client: boto3.client = None) 
 
     :param cluster_id: the ID of the cluster the job is in
     :param step_id: the ID of the step running on the cluster to poll
-    :param client: an boto3 client to use for the request
+    :param client: an optional boto3 client to use for the request
     :return: a step status dictionary as documented in describe_step response syntax
     """
     client = get_emr_client(client=client)
@@ -49,7 +55,7 @@ def get_step_status(cluster_id: str, step_id: str, client: boto3.client = None) 
     stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
 )
 def create_cluster(job_flow: dict, client: boto3.client = None) -> dict:
-    """ Creates an EMR cluster with the given job flow parameters as documented below
+    """Creates an EMR cluster with the given job flow parameters as documented below
 
     If a client is not provided it will just assume a default EMR client with the current session's
     credentials
@@ -88,9 +94,9 @@ def get_cluster_info(cluster_id: str, client: boto3.client = None) -> dict:
 
     https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/emr.html#EMR.Client.describe_cluster
 
-    :param cluster_id:
-    :param client:
-    :return:
+    :param cluster_id: the ID of a cluster to retrieve the information form
+    :param client: an optional EMR boto3 client to use for the request
+    :return: a dictionary of EMR parameters and values for the given cluster_id
     """
     client = get_emr_client(client=client)
     try:
@@ -100,3 +106,31 @@ def get_cluster_info(cluster_id: str, client: boto3.client = None) -> dict:
         logging.exception(e)
         raise
     return response
+
+
+@retry(
+    wait=wait_exponential(
+        multiplier=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MULTIPLIER,
+        min=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MIN,
+        max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
+    stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
+)
+def terminate_clusters(cluster_ids: list, client: boto3.client = None) -> None:
+    """Shuts down the clusters with the ids contained in the given list
+
+    If a client is not provided it will just assume a default EMR client with the current session's
+    credentials
+
+    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/emr.html#EMR.Client.terminate_job_flows
+
+    :param cluster_ids: a list of cluster IDs of clusters to terminate
+    :param client: an optional EMR boto3 client to use for the request
+    :return:
+    """
+    client = get_emr_client(client=client)
+    try:
+        client.terminate_job_flows(JobFlowIds=cluster_ids)
+    except Exception as e:
+        logging.warning("utils.emr.terminate_clusters unable to terminate cluster")
+        logging.exception(e)
+        raise

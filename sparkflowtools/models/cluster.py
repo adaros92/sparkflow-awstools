@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 
 from sparkflowtools.models import instance_fleets
-from sparkflowtools.utils import emr
+from sparkflowtools.utils import emr, s3_path_utils
 
 
 class EmrCluster(object):
@@ -40,7 +40,7 @@ class EmrCluster(object):
         :param log_uri_location:
         :return:
         """
-        # TODO ensure this is an S3 location
+        assert s3_path_utils.is_valid_s3_path(log_uri_location)
         self.log_uri = log_uri_location
         return self
 

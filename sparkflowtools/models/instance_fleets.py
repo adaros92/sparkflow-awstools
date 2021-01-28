@@ -285,13 +285,14 @@ class HugeFleet(Fleet):
 
 
 def get_fleet(fleet_name: str) -> Fleet:
-    """
+    """Factory function for different fleets based on a given name
 
-    :param fleet_name:
-    :return:
+    :param fleet_name: a name of the fleet to create and retrieve
+    :return: an instantiated fleet matching the given type name
     """
     fleet_types = [NanoFleet, TinyFleet, SmallFleet, StandardFleet, MediumFleet, LargeFleet, HugeFleet]
     fleet_map = {fleet.name: fleet() for fleet in fleet_types}
     if fleet_name not in fleet_map:
         raise ValueError("fleet type {0} is not one of the supported types: {1}".format(fleet_name, fleet_types))
     return fleet_map[fleet_name]
+
