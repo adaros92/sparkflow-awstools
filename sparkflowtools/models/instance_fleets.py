@@ -34,10 +34,11 @@ class Fleet(object):
         self.timeout_action = timeout_action
         self.timeout_duration = timeout_duration
 
-    def get_fleet(self):
-        """
+    def get_fleet(self) -> list:
+        """Retrieves the fleet configurations for driver, core, and task nodes to use in launching a new EMR
+        cluster
 
-        :return:
+        :return: a list containing individual instance configs such as number of instances and size
         """
         return [
             {
@@ -295,4 +296,3 @@ def get_fleet(fleet_name: str) -> Fleet:
     if fleet_name not in fleet_map:
         raise ValueError("fleet type {0} is not one of the supported types: {1}".format(fleet_name, fleet_types))
     return fleet_map[fleet_name]
-

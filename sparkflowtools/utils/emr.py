@@ -54,6 +54,36 @@ def get_step_status(cluster_id: str, step_id: str, client: boto3.client = None) 
         max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
     stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
 )
+def submit_step(cluster_id: str, steps: list, client: boto3.client) -> dict:
+    """Submits a list of steps on the EMR cluster by the given ID
+
+    If a client is not provided it will just assume a default EMR client with the current session's
+    credentials
+
+    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/emr.html#EMR.Client.add_job_flow_steps
+    
+    :param cluster_id: a unique ID of the EMR cluster to submit steps to
+    :param steps: a list of Steps as defined in link
+    :param client: an optional boto3 client to use for the request
+    :return: the response from add_job_flow_steps containing the resulting step_id after submitting to EMR
+    """
+    client = get_emr_client(client=client)
+    try:
+        response = client.add_job_flow_steps(JobFlowId=cluster_id, Steps=steps)
+    except Exception as e:
+        logging.warning("utils.emr.submit_step unable to submit job run on EMR cluster {0}".format(cluster_id))
+        logging.exception(e)
+        raise
+    return response
+
+
+@retry(
+    wait=wait_exponential(
+        multiplier=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MULTIPLIER,
+        min=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MIN,
+        max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
+    stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
+)
 def create_cluster(job_flow: dict, client: boto3.client = None) -> dict:
     """Creates an EMR cluster with the given job flow parameters as documented below
 
