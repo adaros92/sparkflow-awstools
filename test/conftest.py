@@ -32,7 +32,7 @@ class EmrClient(object):
                     'FailureDetails': {
                         'Reason': 'some_reason',
                         'Message': 'some_message',
-                        'LogFile': 'some_log_file'
+                        'LogFile': 's3://some_log_location/'
                     },
                     'Timeline': {
                         'CreationDateTime': datetime(2021, 1, 1),
@@ -98,7 +98,7 @@ class EmrClient(object):
                     ]
                 },
                 'InstanceCollectionType': 'INSTANCE_FLEET',
-                'LogUri': 'string',
+                'LogUri': 's3://some_log_location/',
                 'LogEncryptionKmsKeyId': 'string',
                 'RequestedAmiVersion': 'string',
                 'RunningAmiVersion': 'string',
