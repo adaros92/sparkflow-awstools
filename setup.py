@@ -15,7 +15,7 @@ setup(
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/adaros92/sparkflow-awstools",
-    version='0.1.0',
+    version='0.2.0',
     install_requires=['boto3', 'tenacity'],
     tests_require=['pytest', 'pytest-cov', 'tox', 'Random-Word', 'tenacity'],
     license="MIT",
@@ -27,6 +27,9 @@ setup(
     packages=find_packages(exclude=("test",)),
     name='sparkflowtools',
     python_requires='>=3.6',
+    package_data={
+            'sparkflowtools': ['configs/*']
+        },
     entry_points={
         'console_scripts': [
                 'sparkflow-tools = sparkflowtools.__main__:main'
