@@ -77,13 +77,6 @@ def submit_step(cluster_id: str, steps: list, client: boto3.client) -> dict:
     return response
 
 
-@retry(
-    wait=wait_exponential(
-        multiplier=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MULTIPLIER,
-        min=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MIN,
-        max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
-    stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
-)
 def create_cluster(job_flow: dict, client: boto3.client = None) -> dict:
     """Creates an EMR cluster with the given job flow parameters as documented below
 

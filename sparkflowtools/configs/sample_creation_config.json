@@ -1,0 +1,18 @@
+{
+  "LogUri": "s3://emr-logs/",
+  "ReleaseLabel": "emr-5.32.0",
+  "Applications": [{"Name": "Spark"}, {"Name": "Zeppelin"}],
+  "Ec2InstanceAttributes": {
+    "Ec2KeyName": "mykey5.pem",
+    "Ec2SubnetId": "subnet-f72b0bf8",
+    "Ec2AvailabilityZone": "us-east-1f",
+    "IamInstanceProfile": "EMR_EC2_DefaultRole",
+    "EmrManagedMasterSecurityGroup": "sg-00888c4bd2e63f00f",
+    "EmrManagedSlaveSecurityGroup": "sg-06e7f80706c55ed8d"
+  },
+  "Tags": [{"Key": "environment", "Value":  "experimental"}],
+  "AutoTerminate": true,
+  "TerminationProtected": false,
+  "Configurations": [],
+  "ServiceRole": "EMR_DefaultRole"
+}

@@ -30,3 +30,12 @@ def test_get_client():
         client_type = type(retrieved_client)
         assert str(client_type) == expected_client
 
+
+def test_get_resource():
+    """ Tests aws.get_resouce utility function """
+    boto3_resources = ['dynamodb', 'sqs']
+    resource_name = ['dynamodb', 'sqs']
+    for resource, expected in zip(boto3_resources, resource_name):
+        retrieved_resource = aws.get_resource(resource)
+        resource_type = retrieved_resource.meta.service_name
+        assert resource == resource_type
