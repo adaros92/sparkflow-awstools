@@ -12,7 +12,7 @@ def test_insert_records():
     dynamo_db = db.Dynamo()
     dynamo_db.connect(pytest.mock_table_name, pytest.mock_dynamo_resource, pytest.mock_dynamo_table)
     assert pytest.mock_dynamo_table.records == []
-    dynamo_db.insert_records(pytest.mock_table_name, records)
+    dynamo_db.insert_records(records)
     assert pytest.mock_dynamo_table.records == records
 
 
@@ -24,14 +24,14 @@ def test_get_record():
     ]
     dynamo_db = db.Dynamo()
     dynamo_db.connect(pytest.mock_table_name, pytest.mock_dynamo_resource, pytest.mock_dynamo_table)
-    dynamo_db.insert_records(pytest.mock_table_name, records)
+    dynamo_db.insert_records(records)
     keys = {"partition_key_name": "some_partition_key", "sort_key_name": "some_sort_key"}
     table_name = pytest.mock_table_name
-    record, _ = dynamo_db.get_record(table_name, keys)
-    assert record == records[0] and dynamo_db.get_record(table_name, keys)
+    record, _ = dynamo_db.get_record(keys)
+    assert record == records[0] and dynamo_db.get_record(keys)
     keys = {"partition_key_name": "some_partition_key"}
     with pytest.raises(ValueError):
-        dynamo_db.get_record(table_name, keys)
+        dynamo_db.get_record(keys)
 
 
 def test_get_records_with_index():
@@ -42,9 +42,8 @@ def test_get_records_with_index():
     ]
     dynamo_db = db.Dynamo()
     dynamo_db.connect(pytest.mock_table_name, pytest.mock_dynamo_resource, pytest.mock_dynamo_table)
-    dynamo_db.insert_records(pytest.mock_table_name, records)
-    items, response = dynamo_db.get_records_with_index(
-        pytest.mock_table_name, "some_index", "some_expression", "some_expression_map")
+    dynamo_db.insert_records(records)
+    items, response = dynamo_db.get_records_with_index("some_index", "some_expression", "some_expression_map")
 
 
 def test_get_db():
