@@ -166,6 +166,51 @@ class EmrClient(object):
         return None
 
 
+class MockDynamoTable(object):
+
+    def __init__(self, name):
+        self.name = name
+        self.records = []
+        self.global_secondary_indexes = [{"IndexStatus": "Active"}]
+
+    def put_item(self, **kwargs) -> None:
+        item_to_put = kwargs["Item"]
+        self.records.append(item_to_put)
+        return {}
+
+    def get_item(self, **kwargs) -> dict:
+        key_to_get = kwargs["Key"]
+        partition_key_name = "partition_key_name"
+        sort_key_name = "sort_key_name"
+        partition_key_value = key_to_get[partition_key_name]
+        sort_key_value = key_to_get[sort_key_name]
+        for record in self.records:
+            partition_value = record.get(partition_key_value, None)
+            sort_value = record.get(sort_key_value, None)
+            if partition_value and sort_value:
+                return {"Item": record}
+        return {"Item": {}}
+
+    def query(self, **kwargs) -> dict:
+        index_name = kwargs["IndexName"]
+        key_condition_expression = kwargs["KeyConditionExpression"]
+        expression_attribute_values = kwargs["ExpressionAttributeValues"]
+        # TODO currently acts like a full table scan but test can be improved with actual query mocking
+        return {"Items": self.records}
+
+
+class MockDynamoResource(object):
+
+    def __init__(self, **kwargs):
+        self.table = None
+
+    def Table(self, name) -> MockDynamoTable:
+        return MockDynamoTable(name)
+
+
 def pytest_configure():
     """Configures universal pytest parameters for running unit tests"""
     pytest.mock_emr_client = EmrClient()
+    pytest.mock_table_name = "mock_test_table"
+    pytest.mock_dynamo_resource = MockDynamoResource()
+    pytest.mock_dynamo_table = MockDynamoTable(pytest.mock_table_name)

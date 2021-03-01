@@ -49,15 +49,18 @@ def _get_table_response_status(response: dict) -> dict:
         max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
     stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
 )
-def get_item_from_dynamodb_table(table_name: str, key: dict, dynamodb_resource: boto3.resource = None) -> tuple:
+def get_item_from_dynamodb_table(
+        table_name: str, key: dict,
+        dynamodb_resource: boto3.resource = None, dynamo_table_object=None) -> tuple:
     """Retrieves a single item from the DynamoDB table matching the given key
 
     :param table_name the name of the DynamoDB table to retrieve the item from
     :param key the key that identifies the record to retrieve in DynamoDB
     :param dynamodb_resource an optional DynamoDB table resource to use for the request
+    :param dynamo_table_object an optional DynamoDB table object to use for the request
     :returns the item data and the response from the API request
     """
-    table, dynamodb_resource = get_dynamo_table(table_name, dynamodb_resource)
+    table, dynamodb_resource = get_dynamo_table(table_name, dynamodb_resource, dynamo_table_object)
     try:
         response = table.get_item(Key=key)
         response_status = _get_table_response_status(response)
@@ -75,15 +78,18 @@ def get_item_from_dynamodb_table(table_name: str, key: dict, dynamodb_resource: 
         max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
     stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
 )
-def write_item_to_dynamodb(table_name: str, item_dictionary: dict, dynamodb_resource: boto3.resource = None) -> dict:
+def write_item_to_dynamodb(
+        table_name: str, item_dictionary: dict,
+        dynamodb_resource: boto3.resource = None, dynamo_table_object=None) -> dict:
     """Inserts a single item into a DynamoDB table
 
     :param table_name the name of the DynamoDB table to insert the item to
     :param item_dictionary the item data to insert
     :param dynamodb_resource an optional DynamoDB table resource to use for the request
+    :param dynamo_table_object an optional DynamoDB table object to use for the request
     :returns the response from the API request
     """
-    table, dynamodb_resource = get_dynamo_table(table_name, dynamodb_resource)
+    table, dynamodb_resource = get_dynamo_table(table_name, dynamodb_resource, table=dynamo_table_object)
     try:
         response = table.put_item(Item=item_dictionary)
         response_status = _get_table_response_status(response)
@@ -125,7 +131,8 @@ def _query_dynamo(
 )
 def get_items_with_index(
         table_name: str, index_name: str, expression: str,
-        expression_attribute_values: dict, dynamodb_resource: boto3.resource = None) -> tuple:
+        expression_attribute_values: dict, dynamodb_resource: boto3.resource = None,
+        dynamo_table_object=None) -> tuple:
     """Retrieves all items in a DynamoDB table using the given index and matching the given expression
 
     :param table_name the name of the DynamoDB table to query
@@ -133,11 +140,12 @@ def get_items_with_index(
     :param expression a DynamoDb boto3 query expression
     :param expression_attribute_values the values to substitute in the expression
     :param dynamodb_resource an optional DynamoDB table resource to use for the request
+    :param dynamo_table_object an optional DynamoDB table object to use for the request
     """
-    table, dynamodb_resource = get_dynamo_table(table_name, dynamodb_resource)
+    table, dynamodb_resource = get_dynamo_table(table_name, dynamodb_resource, table=dynamo_table_object)
     items = []
     while True:
-        if not table.global_secondary_indexes or table.global_secondary_indexes[0]["IndesStatus"] != "Active":
+        if not table.global_secondary_indexes or table.global_secondary_indexes[0]["IndexStatus"] != "Active":
             logging.info("waiting for {0}'s index to populate".format(table_name))
             time.sleep(10)
             table.reload()
