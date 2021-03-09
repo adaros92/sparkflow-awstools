@@ -171,7 +171,7 @@ class MockDynamoTable(object):
     def __init__(self, name):
         self.name = name
         self.records = []
-        self.global_secondary_indexes = [{"IndexStatus": "Active"}]
+        self.global_secondary_indexes = [{"IndexStatus": "ACTIVE"}]
 
     def put_item(self, **kwargs) -> None:
         item_to_put = kwargs["Item"]
@@ -208,9 +208,16 @@ class MockDynamoResource(object):
         return MockDynamoTable(name)
 
 
+class MockLambdaClient(object):
+
+    def invoke(self, **kwargs):
+        return {"Payload": {"Status": 200}}
+
+
 def pytest_configure():
     """Configures universal pytest parameters for running unit tests"""
     pytest.mock_emr_client = EmrClient()
     pytest.mock_table_name = "mock_test_table"
     pytest.mock_dynamo_resource = MockDynamoResource()
     pytest.mock_dynamo_table = MockDynamoTable(pytest.mock_table_name)
+    pytest.mock_lambda_client = MockLambdaClient()

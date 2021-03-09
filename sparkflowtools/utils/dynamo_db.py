@@ -145,7 +145,7 @@ def get_items_with_index(
     table, dynamodb_resource = get_dynamo_table(table_name, dynamodb_resource, table=dynamo_table_object)
     items = []
     while True:
-        if not table.global_secondary_indexes or table.global_secondary_indexes[0]["IndexStatus"] != "Active":
+        if not table.global_secondary_indexes or table.global_secondary_indexes[0]["IndexStatus"] != "ACTIVE":
             logging.info("waiting for {0}'s index to populate".format(table_name))
             time.sleep(10)
             table.reload()
