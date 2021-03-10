@@ -165,3 +165,28 @@ def get_items_with_index(
         raise
     else:
         return items, response_status
+
+
+@retry(
+    wait=wait_exponential(
+        multiplier=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MULTIPLIER,
+        min=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MIN,
+        max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
+    stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
+)
+def delete_item_by_key(
+        table_name: str, key: dict, dynamodb_resource: boto3.resource = None, dynamo_table_object=None):
+    """Delete a single item identified by the given key from the Dynamo table with the given name
+
+    :param table_name the name of the table to delete the item from
+    :param key a dictionary containing both the partition and sort values that uniquely identify a record to delete
+    :param dynamodb_resource an optional DynamoDB table resource to use for the request
+    :param dynamo_table_object an optional DynamoDB table object to use for the request
+    """
+    table, dynamodb_resource = get_dynamo_table(table_name, dynamodb_resource, table=dynamo_table_object)
+    try:
+        table.delete_item(Key=key)
+    except Exception as e:
+        logging.warning("in sparkflowtools.utils.dynamo_db could not delete item from table with key {0}".format(key))
+        logging.exception(e)
+        raise

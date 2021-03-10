@@ -28,6 +28,15 @@ class DB(ABC):
         """
         pass
 
+    @abstractmethod
+    def delete_records(self, records: list) -> list:
+        """Deletes a list of record identifiers from the database table
+
+        :param records IDs of records to delete
+        :returns a list of failed records
+        """
+        pass
+
 
 class Dynamo(DB):
 
@@ -49,6 +58,7 @@ class Dynamo(DB):
         """Inserts a list of records into the DynamoDB table by the provided name
 
         :param records a list of records to insert into the Dynamo table
+        :returns a list of failed records during insertion
         """
         failed = []
         for record in records:
@@ -56,6 +66,23 @@ class Dynamo(DB):
                 dynamo_db.write_item_to_dynamodb(self.table_name, record, self.connection, self.table)
             except Exception as e:
                 logging.warning("could not insert {0} into {1}".format(record, self.table_name))
+                logging.exception(e)
+                failed.append(record)
+        return failed
+
+    def delete_records(self, records: list) -> list:
+        """Deletes records from DynamoDB as identified by the keys contained in the given records list
+
+        :param records a list of DynamoDB keys to delete from the table
+        :returns a list of failed records during deletion
+        """
+        failed = []
+        for record in records:
+            key_to_delete = record.get("Key")
+            try:
+                dynamo_db.delete_item_by_key(self.table_name, key_to_delete, self.connection, self.table)
+            except Exception as e:
+                logging.warning("could not delete {0} from {1}".format(key_to_delete, self.table_name))
                 logging.exception(e)
                 failed.append(record)
         return failed
