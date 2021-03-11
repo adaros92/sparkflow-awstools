@@ -1,6 +1,7 @@
 import boto3
 import logging
 
+from datetime import datetime
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from sparkflowtools.utils import aws, config
@@ -148,12 +149,167 @@ def terminate_clusters(cluster_ids: list, client: boto3.client = None) -> None:
 
     :param cluster_ids: a list of cluster IDs of clusters to terminate
     :param client: an optional EMR boto3 client to use for the request
-    :return:
     """
     client = get_emr_client(client=client)
     try:
         client.terminate_job_flows(JobFlowIds=cluster_ids)
     except Exception as e:
         logging.warning("utils.emr.terminate_clusters unable to terminate cluster")
+        logging.exception(e)
+        raise
+
+
+def _get_step_status(step: dict) -> dict:
+    """Returns a flattened dictionary of step status information from the list_steps API endpoint
+
+    :param step the response from the list_steps API endpoint for an individual step to retrieve data from
+    :returns a dictionary containing relevant step attributes
+    """
+    return {
+        "step_id": step["Id"],
+        "name": step["Name"],
+        "jar": step["Config"]["Jar"],
+        "properties": step["Config"]["Properties"],
+        "main_class": step["Config"]["MainClass"],
+        "args": step["Config"]["Args"],
+        "action_on_failure": step["ActionOnFailure"],
+        "status": step["Status"]["State"],
+        "state_change_reason": step["Status"]["Code"],
+        "failure_reason": step["Status"]["FailureDetails"]["Reason"],
+        "failure_message": step["Status"]["FailureDetails"]["Message"],
+        "failure_log": step["Status"]["FailureDetails"]["LogFile"],
+        "creation_datetime": step["Status"]["Timeline"]["CreationDateTime"].strftime("%Y-%m-%dT%H:%M"),
+        "start_datetime": step["Status"]["Timeline"]["StartDateTime"].strftime("%Y-%m-%dT%H:%M"),
+        "end_datetime": step["Status"]["Timeline"]["EndDateTime"].strftime("%Y-%m-%dT%H:%M")
+    }
+
+
+@retry(
+    wait=wait_exponential(
+        multiplier=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MULTIPLIER,
+        min=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MIN,
+        max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
+    stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
+)
+def get_step_statuses(cluster_id: str, states: list = None, step_ids: list = None, client: boto3.client = None):
+    """Retrieves cluster statuses for all steps in the cluster the caller has visibility to matching the given list of
+     states or for the given list  of step_ids in that cluster
+
+    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/emr.html#EMR.Client.list_steps
+
+    :param cluster_id the ID of the cluster running the steps to get statuses from
+    :param states the states of steps to get
+        ('PENDING'|'CANCEL_PENDING'|'RUNNING'|'COMPLETED'|'CANCELLED'|'FAILED'|'INTERRUPTED')
+    :param step_ids an optional list of step IDs to filter results to
+    :param client an optional EMR boto3 client to use for the request
+    :return a list of statuses by step_id
+    """
+    expected_states = ["PENDING", "CANCEL_PENDING", "RUNNING", "COMPLETED", "CANCELLED", "FAILED", "INTERRUPTED"]
+    if states:
+        for state in states:
+            if state not in expected_states:
+                raise ValueError("in utils.emr.get_step_statuses the given state of {0} is not one of {1}".format(
+                    state, expected_states))
+    else:
+        states = expected_states
+    client = get_emr_client(client=client)
+    try:
+        response = client.list_steps(ClusterId=cluster_id, StepStates=states)
+        marker = response.get("Marker", True)
+        statuses = []
+        while marker:
+            marker = response.get("Marker", False)
+            steps = response["Steps"]
+            for step in steps:
+                status = _get_step_status(step)
+                # If a list of specific cluster_ids are provided then only retrieve the status for those
+                if step_ids:
+                    if status["step_id"] in step_ids:
+                        statuses.append(status)
+                # Otherwise keep all statuses
+                else:
+                    statuses.append(status)
+            if marker:
+                response = client.list_steps(ClusterId=cluster_id, StepStates=states, Marker=marker)
+        logging.info("retrieved {0} steps for cluster {1}".format(len(statuses), cluster_id))
+        return statuses
+    except Exception as e:
+        logging.warning("utils.emr.get_step_statuses could not list steps")
+        logging.exception(e)
+        raise
+
+
+def _get_cluster_status(cluster: dict) -> dict:
+    """Returns a flattened dictionary of cluster status information from the list_clusters API endpoint
+
+    :param cluster the response from the list_clusters API endpoint for an individual cluster to retrieve data from
+    :returns a dictionary containing relevant cluster attributes
+    """
+    return {
+        "cluster_id": cluster["Id"],
+        "cluster_name": cluster["Name"],
+        "status": cluster["Status"]["State"],
+        "state_change_reason": cluster["Status"]["StateChangeReason"]["Code"],
+        "creation_datetime": cluster["Status"]["Timeline"]["CreationDateTime"].strftime("%Y-%m-%dT%H:%M"),
+        "end_datetime": cluster["Status"]["Timeline"]["EndDateTime"].strftime("%Y-%m-%dT%H:%M"),
+        "cluster_arn": cluster["ClusterArn"],
+        "instance_hours": cluster["NormalizedInstanceHours"]
+    }
+
+
+@retry(
+    wait=wait_exponential(
+        multiplier=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MULTIPLIER,
+        min=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MIN,
+        max=config.AWSApiConfig.EXPONENTIAL_BACKOFF_MAX),
+    stop=stop_after_attempt(config.AWSApiConfig.RETRY_MAX)
+)
+def get_cluster_statuses(
+        states: list, created_after: datetime = None, cluster_ids: list = None, client: boto3.client = None) -> list:
+    """Retrieves cluster statuses for all clusters the caller has visibility to or for the given list of cluster_ids
+
+    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/emr.html#EMR.Client.list_clusters
+
+    :param states the states of clusters to get (STARTING, BOOTSTRAPPING, RUNNING, WAITING, TERMINATING, TERMINATED)
+    :param created_after an optional datetime date to filter the request by
+    :param cluster_ids a list of cluster IDs to filter the status retrieval to
+    :param client an optional EMR boto3 client to use for the request
+    :return a list of statuses by cluster_id
+    """
+    expected_states = {"STARTING", "BOOTSTRAPPING", "RUNNING", "WAITING", "TERMINATING", "TERMINATED"}
+    for state in states:
+        if state not in expected_states:
+            raise ValueError("in utils.emr.get_cluster_statuses the given state of {0} is not one of {1}".format(
+                state, expected_states))
+    client = get_emr_client(client=client)
+    if not created_after:
+        created_after = datetime(1900, 1, 1)
+    try:
+        response = client.list_clusters(ClusterStates=states, CreatedAfter=created_after)
+        marker = response.get("Marker", True)
+        statuses = []
+        while marker:
+            marker = response.get("Marker", False)
+            clusters = response["Clusters"]
+            for cluster in clusters:
+                status = _get_cluster_status(cluster)
+                cluster_id = status["cluster_id"]
+                active_steps_on_cluster = get_step_statuses(
+                    cluster_id,
+                    states=["PENDING", "CANCEL_PENDING", "RUNNING"]
+                )
+                status["number_of_active_steps"] = len(active_steps_on_cluster)
+                # If a list of specific cluster_ids are provided then only retrieve the status for those
+                if cluster_ids:
+                    if cluster_id in cluster_ids:
+                        statuses.append(status)
+                # Otherwise keep all statuses
+                else:
+                    statuses.append(status)
+            if marker:
+                response = client.list_clusters(ClusterStates=states, Marker=marker, CreatedAfter=created_after)
+        return statuses
+    except Exception as e:
+        logging.warning("utils.emr.get_cluster_statuses could not list clusters")
         logging.exception(e)
         raise

@@ -15,7 +15,7 @@ setup(
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/adaros92/sparkflow-awstools",
-    version='1.1.0',
+    version='1.2.0',
     install_requires=['boto3', 'tenacity'],
     tests_require=['pytest', 'pytest-cov', 'tox', 'Random-Word', 'tenacity'],
     license="MIT",
