@@ -12,21 +12,54 @@ class EmrStep(object):
         self.step_status = {}
         self.action_on_failure = "TERMINATE_CLUSTER"
         self.cluster_id = None
-        self.script_path = None
-        self.main_class = None
-        self.args = []
+        self.script_path = "command-runner.jar"
+        self.spark_args = {}
+        self.job_args = {}
+        self.job_class = None
+        self.job_jar = None
+        self.args = None
+
+    @staticmethod
+    def parse_input_args(args: dict) -> list:
+        """Parses a dictionary of key value pairs for argument parameters
+
+        :param args a dictionary of key value parameters to pass
+        :returns a list of lists where each list contains the key value pairs
+        """
+        return [["{0}".format(arg), "{0}".format(value)] for arg, value in args.items()]
+
+    def _validate_args(self):
+        """Validates the instance attributes before constructing the step payload"""
+        if not self.job_class:
+            raise ValueError("value {0} is not a valid main class".format(self.job_class))
+        elif not self.job_jar:
+            raise ValueError("value {0} is not a valid JAR to execute with spark-submit".format(self.job_jar))
+
+    def _populate_spark_submit_args(self):
+        """Constructs the spark-submit command to provide as the args input to a HadoopJarStep on EMR"""
+        self._validate_args()
+        self.args = ['spark-submit', '--deploy-mode', 'cluster']
+        class_input = ['--class', self.job_class]
+        spark_args = self.parse_input_args(self.spark_args)
+        user_args = self.parse_input_args(self.job_args)
+        for arg in spark_args:
+            self.args.extend(arg)
+        self.args.extend(class_input)
+        self.args.append(self.job_jar)
+        for arg in user_args:
+            self.args.extend(arg)
 
     def _construct_step_payload(self) -> dict:
         """Provides the step payload expected by EMR from the attached attributes
 
         :return: a dictionary containing the EMR step payload attributes required to launch a job on a cluster
         """
+        self._populate_spark_submit_args()
         return {
-            'Name': 'string',
+            'Name': self.name,
             'ActionOnFailure': self.action_on_failure,
             'HadoopJarStep': {
                 'Jar': self.script_path,
-                'MainClass': self.main_class,
                 'Args': self.args
             }
         }
@@ -43,18 +76,6 @@ class EmrStep(object):
         self.cluster_id = cluster_id
         self.step_id = step_id
         self.fetch_status(client=client)
-        return self
-
-    def add_script(self, script_path: str = "command-runner.jar", main_class: str = None):
-        """Attaches the main driver class for the Spark application and the script path pointing to the script
-        that needs to be run
-
-        :param main_class: the location of the driver class within the package being run
-        :param script_path: the path of the script to run with this step
-        :return: a reference to this instance
-        """
-        self.script_path = script_path
-        self.main_class = main_class
         return self
 
     def fetch_status(self, client: boto3.client = None) -> dict:
