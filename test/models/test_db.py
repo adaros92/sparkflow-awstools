@@ -29,9 +29,6 @@ def test_get_record():
     table_name = pytest.mock_table_name
     record, _ = dynamo_db.get_record(keys)
     assert record == records[0] and dynamo_db.get_record(keys)
-    keys = {"partition_key_name": "some_partition_key"}
-    with pytest.raises(ValueError):
-        dynamo_db.get_record(keys)
 
 
 def test_get_records_with_index():

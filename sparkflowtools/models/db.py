@@ -92,10 +92,6 @@ class Dynamo(DB):
 
         :param keys a dictionary containing the partition/sort keys that identifies the record to retrieve
         """
-        required_attributes = ["partition_key_name", "sort_key_name"]
-        for attribute in required_attributes:
-            if attribute not in keys:
-                raise ValueError("provided keys object {0} missing attribute {1}".format(keys, attribute))
         return dynamo_db.get_item_from_dynamodb_table(self.table_name, keys, self.connection, self.table)
 
     def get_records_with_index(self, index: str, expression: str, expression_map: dict):
