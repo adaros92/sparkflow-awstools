@@ -168,10 +168,6 @@ def _get_step_status(step: dict) -> dict:
     return {
         "step_id": step["Id"],
         "name": step["Name"],
-        "jar": step["Config"]["Jar"],
-        "properties": step["Config"]["Properties"],
-        "main_class": step["Config"]["MainClass"],
-        "args": step["Config"]["Args"],
         "status": step["Status"]["State"]
     }
 
