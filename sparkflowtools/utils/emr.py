@@ -172,15 +172,7 @@ def _get_step_status(step: dict) -> dict:
         "properties": step["Config"]["Properties"],
         "main_class": step["Config"]["MainClass"],
         "args": step["Config"]["Args"],
-        "action_on_failure": step["ActionOnFailure"],
-        "status": step["Status"]["State"],
-        "state_change_reason": step["Status"]["Code"],
-        "failure_reason": step["Status"]["FailureDetails"]["Reason"],
-        "failure_message": step["Status"]["FailureDetails"]["Message"],
-        "failure_log": step["Status"]["FailureDetails"]["LogFile"],
-        "creation_datetime": step["Status"]["Timeline"]["CreationDateTime"].strftime("%Y-%m-%dT%H:%M"),
-        "start_datetime": step["Status"]["Timeline"]["StartDateTime"].strftime("%Y-%m-%dT%H:%M"),
-        "end_datetime": step["Status"]["Timeline"]["EndDateTime"].strftime("%Y-%m-%dT%H:%M")
+        "status": step["Status"]["State"]
     }
 
 
@@ -249,11 +241,13 @@ def _get_cluster_status(cluster: dict) -> dict:
         "cluster_id": cluster["Id"],
         "cluster_name": cluster["Name"],
         "status": cluster["Status"]["State"],
-        "state_change_reason": cluster["Status"]["StateChangeReason"]["Code"],
-        "creation_datetime": cluster["Status"]["Timeline"]["CreationDateTime"].strftime("%Y-%m-%dT%H:%M"),
-        "end_datetime": cluster["Status"]["Timeline"]["EndDateTime"].strftime("%Y-%m-%dT%H:%M"),
+        "state_change_reason": cluster["Status"].get("StateChangeReason", {}).get("Code", ""),
+        "creation_datetime": cluster["Status"].get("Timeline", {}).get(
+            "CreationDateTime", datetime(1900, 12, 1, 1, 0, 0)).strftime("%Y-%m-%dT%H:%M"),
+        "end_datetime": cluster["Status"].get("Timeline", {}).get(
+            "EndDateTime", datetime(2050, 12, 1, 1, 0, 0)).strftime("%Y-%m-%dT%H:%M"),
         "cluster_arn": cluster["ClusterArn"],
-        "instance_hours": cluster["NormalizedInstanceHours"]
+        "instance_hours": cluster.get("NormalizedInstanceHours", 0)
     }
 
 
